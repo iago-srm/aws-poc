@@ -1,0 +1,18 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Two systems communicating through SQS
+Resources:
+  TaskQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: task-queue
+      ReceiveMessageWaitTimeSeconds: 10  #long polling
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt DeadLetterQueue.Arn
+        maxReceiveCount: 10
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+  ConsumerLambda: 
+    Type: AWS::Lambda::Function
+    Properties:
+  LambdasBucket:
+    Type: 
