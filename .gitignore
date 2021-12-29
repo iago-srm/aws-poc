@@ -102,3 +102,12 @@ dist
 
 # TernJS port file
 .tern-port
+
+# zips
+*.zip
+
+#packaged templates
+packaged.yaml
+
+#output files
+*-output.json

@@ -1,0 +1,12 @@
+Resources:
+  ProxyEntryLambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs12.x
+      CodeUri: src
+      Handler: index.handler
+      Role: !GetAtt ProxyEntryRole.Arn
+      Environment:
+        Variables:
+          ORIGINMAP_TABLE: !Ref OriginMapTBL
+          DOMAIN: !Ref DomainParameter

@@ -1,0 +1,12 @@
+Parameters:
+  MyParameter:
+    Type: String
+    Default: someValue
+Resources:
+  MyCustomResource:
+    Type: Custom::MyCustomResourceName
+    Properties: 
+      ServiceToken: !ImportValue Outputs:Export:Name from another stack
+      ParamToLambdaOrSns1: !Ref MyParameter
+      ParamToLambdaOrSns2: 777
+

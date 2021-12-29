@@ -1,0 +1,32 @@
+HelloWorldApplication:
+  Type: AWS::CodeDeploy::Application
+  Properties:
+    ApplicationName: ServerlessDeploymentApplication
+    ComputePlatform: Lambda #Here, it could be EC2 or ECS as well
+
+CodeDeployServiceRole:
+  Type: AWS::IAM::Role
+  Properties: 
+    AssumeRolePolicyDocument:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+              - codedeploy.amazonaws.com
+          Action:
+            - 'sts:AssumeRole'
+    # The policy necessary for the compute service in question
+    ManagedPolicyArns: 
+      - arn:aws:iam::aws:policy/service-role/AWSCodeDeployRoleForLambda
+
+HelloWorldDeploymentGroup:
+  Type: AWS::CodeDeploy::DeploymentGroup
+  Properties:
+    ApplicationName: !Ref HelloWorldApplication
+    DeploymentConfigName: CodeDeployDefault.LambdaCanary10Percent5Minutes
+    DeploymentGroupName: HelloWorldFunctionDeploymentGroup
+    DeploymentStyle:
+      DeploymentOption: WITH_TRAFFIC_CONTROL
+      DeploymentType: BLUE_GREEN
+    ServiceRoleArn: !GetAtt CodeDeployServiceRole.Arn

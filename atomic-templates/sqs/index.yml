@@ -1,0 +1,32 @@
+Resources:
+  TaskQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: task-queue
+      VisibilityTimeout: 20
+      FifoQueue:  false
+      ReceiveMessageWaitTimeSeconds: 10  #long polling
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt DeadLetterQueue.Arn
+        maxReceiveCount: 10
+      Tags:
+        - Key: keyname
+          Value: value
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+  sqsQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref TaskQueue
+      PolicyDocument: 
+        Id: MyQueuePolicy
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Allow-User-SendMessage
+            Effect: Allow
+            # Principal:
+            #   AWS: arn:aws:iam::123456789012:user/myapp
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt TaskQueue.Arn

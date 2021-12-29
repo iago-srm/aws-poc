@@ -1,0 +1,71 @@
+Resources:
+  #The Lambda Execution Role
+  HelloWorldRole:
+    Type: AWS::IAM::Role
+    Properties: 
+      # This part always goes like this, SAM or vanilla CFN
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      # Place here whatever managed policy you might need
+      ManagedPolicyArns: 
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole #This one lets lambda access logs. 
+      # Here go your custom policies
+      Policies: 
+        - PolicyName: # give it a name
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: # whatever actions lambda needs to perform
+                Resource: # ARN of the affected service
+
+  #The lambda function
+  HelloWorldFunction:
+    Type: AWS::Lambda::Function # SAM is ::Serverless::
+    Properties:
+      Description: Your text description
+      Code: 'hello_world/' # the folder in which your function code resides
+      Handler: index.handler # filename.exportName. Usually index.handler
+      Runtime: nodejs14.x
+      Timeout: 300
+      Architectures:
+        - x86_64
+      Role: !GetAtt HelloWorldRole.Arn # Name of your role, created above
+      Environment:
+        Variables:
+          databaseName: lambdadb
+          databaseUser: admin
+  # Version and alias resources, for controlling deployment of updates to function code
+  HelloWorldFunctionVersion:
+    Type: AWS::Lambda::Version
+    Properties: 
+      Description: "Describing the function version."
+      FunctionName: !Ref HelloWorldFunction
+
+  # An alias receives the function and the version, which it associates to the function
+  # Use CodeDeploy to update
+  HelloWorldFunctionAlias:
+    Type: AWS::Lambda::Alias
+    Properties: 
+      FunctionName: !Ref HelloWorldFunction
+      FunctionVersion: !GetAtt HelloWorldFunctionVersion.Version
+      Name: live
+      # Provisions 10 simultaneous execution environments.
+      # Best practice to set it here in Alias, even though it can be set in Version Resource as well.
+      ProvisionedConcurrencyConfig: 
+        ProvisionedConcurrentExecutions: 10
+
+Outputs:
+  # If you want this lambda to serve a custom resource
+  CustomResourceLambdaARN:
+    Description: My Lambda ARN
+    Value: !GetAtt HelloWorldFunction.Arn
+    Export:
+      Name: name-another-stack-will-use

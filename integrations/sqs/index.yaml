@@ -1,0 +1,99 @@
+
+Parameters:
+  FifoQueue:
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "false"
+    Description: "To create a FIFO queue, set this to true"
+    Type: "String"
+Conditions:
+# this is necessary because of this cfn bug https://github.com/aws-cloudformation/cloudformation-coverage-roadmap/issues/165
+  IsFifo: !Equals [!Ref FifoQueue, "true"]
+
+Resources:
+  TaskQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: task-queue
+      VisibilityTimeout: 30
+      FifoQueue: !If [IsFifo, true, !Ref AWS::NoValue]
+      ReceiveMessageWaitTimeSeconds: 10  #long polling
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt DeadLetterQueue.Arn
+        maxReceiveCount: 5
+      Tags:
+        - Key: keyname
+          Value: value
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      FifoQueue: !If [IsFifo, true, !Ref AWS::NoValue]
+
+  #The Lambda Execution Role
+  ConsumerLambdaRole:
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns: 
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole #This one lets lambda access logs. 
+      Policies: 
+        - PolicyName: access-sqs #this name can't contain spaces
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: 
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                  - sqs:ReceiveMessage
+                Resource: !GetAtt TaskQueue.Arn
+  
+  ConsumerLambdaEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: 5
+      EventSourceArn: !GetAtt TaskQueue.Arn
+      FunctionName: !GetAtt ConsumerLambdaFunction.Arn
+      MaximumBatchingWindowInSeconds: 3
+      FunctionResponseTypes: 
+        - ReportBatchItemFailures
+
+  ConsumerLambdaFunction:
+    Type: AWS::Lambda::Function 
+    Properties:
+      Description: Consumer Function of SQS
+      FunctionName: sqs-consumer-lambda
+      Code: 'consumer-lambda/' 
+      Handler: index.handler 
+      Runtime: nodejs14.x
+      Timeout: 10 #1 to 900. Default 3
+      Architectures:
+        - x86_64
+      Role: !GetAtt ConsumerLambdaRole.Arn 
+      Environment:
+        Variables:
+          databaseName: lambdadb
+          databaseUser: admin
+
+  HelloWorldFunctionVersion:
+    Type: AWS::Lambda::Version
+    Properties: 
+      Description: "Describing the function version."
+      FunctionName: !Ref ConsumerLambdaFunction
+
+  HelloWorldFunctionAlias:
+    Type: AWS::Lambda::Alias
+    Properties: 
+      FunctionName: !Ref ConsumerLambdaFunction
+      FunctionVersion: !GetAtt HelloWorldFunctionVersion.Version
+      Name: live
+

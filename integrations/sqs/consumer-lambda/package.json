@@ -1,4 +1,5 @@
 {
+  "type": "module",
   "name": "consumer-lambda",
   "version": "1.0.0",
   "description": "This lambda consumes SQS events",
@@ -7,5 +8,8 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.24.0"
+  }
 }
